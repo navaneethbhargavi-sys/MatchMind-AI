@@ -40,11 +40,16 @@ export function AskView({ match, language = "EN" }: { match: LiveMatchInfo | nul
     setInput("");
     setThinking(true);
     try {
+      // Hard client-side timeout: never leave the user staring at thinking dots.
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 35_000);
       const response = await fetch("/api/live/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: trimmed }),
+        signal: controller.signal,
       });
+      window.clearTimeout(timeout);
       const data = await response.json();
       setMessages((current) => [
         ...current,
@@ -53,7 +58,7 @@ export function AskView({ match, language = "EN" }: { match: LiveMatchInfo | nul
     } catch {
       setMessages((current) => [
         ...current,
-        { role: "ai", text: "I couldn't reach the live feed just now - check the event engine and try again." },
+        { role: "ai", text: "That free-form question took too long or the inference endpoint didn't answer. Try a factual question (score, goals, cards, stats) - those answer instantly from the live feed." },
       ]);
     } finally {
       setThinking(false);
@@ -133,7 +138,7 @@ export function AskView({ match, language = "EN" }: { match: LiveMatchInfo | nul
           <span className="eyebrow">HOW IT WORKS</span>
           <ul>
             <li><b>Grounded:</b> answers are computed from the live provider feed - no invented facts.</li>
-            <li><b>Always on:</b> the built-in rules engine works with zero configuration.</li>
+            <li><b>Always on:</b> the built-in rules engine works with zero configuration - factual questions answer instantly.</li>
           </ul>
         </div>
       </section>

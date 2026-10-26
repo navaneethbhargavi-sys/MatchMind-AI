@@ -282,6 +282,17 @@ function ensurePolling() {
   void poll();
 }
 
+/** Fetch any fixture's normalized timeline on demand (used by the Q&A agent
+ * to answer questions about matches that are not currently selected). */
+export async function fetchMatchEvents(matchId: string): Promise<{ match: LiveMatchDetail; events: MatchEvent[] } | null> {
+  try {
+    const detail = await fetchDetail(matchId);
+    return { match: detail, events: timelineToEvents(detail) };
+  } catch {
+    return null;
+  }
+}
+
 export function getLiveState() {
   ensurePolling();
   return {

@@ -1,14 +1,16 @@
 /**
  * Ask MatchMind: a question-answering engine over the live Premier League feed.
  *
- * Deterministic first: questions are answered from the real live payload and
- * fixture list (score, goals, cards, substitutions, possession, fixtures,
- * tactical state, commentary). When an OpenAI key is configured the same real
- * context is injected into a chat prompt for free-form phrasing, with the
- * deterministic engine as an always-available fallback.
+ * Confident intents (score, goals, cards, substitutions, statistics, fixtures,
+ * cross-match questions, tactical rationale) are answered instantly and
+ * deterministically from the live data - no LLM in the path. Only free-form
+ * questions are routed to the configured OpenAI-compatible inference endpoint
+ * (GitHub Models / Azure OpenAI / Gemini), with the live payload injected as
+ * grounding context and the deterministic engine as an always-available
+ * fallback.
  */
 
-import { getLiveState } from "./live";
+import { fetchMatchEvents, getLiveState } from "./live";
 import { logger } from "./logger";
 
 export type AskAnswer = {
@@ -27,7 +29,7 @@ function fmtClock(detail: string): string {
 
 function goalsLine(events: any[], home: any, away: any): string {
   const goals = events.filter((e: any) => e.type === "goal");
-  if (!goals.length) return `No goals yet in ${home.shortName} vs ${away.shortName}.`;
+  if (!goals.length) return `No goals in ${home.shortName} vs ${away.shortName}.`;
   return goals
     .map((g: any) => {
       const team = g.team === "home" ? home.shortName : away.shortName;
@@ -75,8 +77,25 @@ function fixturesLine(): string {
     .join(" | ");
 }
 
-/** Deterministic intent matching over the real payload. */
-export function answerFromRules(question: string): AskAnswer {
+/** Find a fixture from today's slate mentioned by name in the question. */
+function findMentionedMatch(question: string, excludeId?: string | null): any | null {
+  const q = question.toLowerCase();
+  const { matches } = getLiveState();
+  const found = matches.find((m: any) => {
+    if (excludeId && m.id === excludeId) return false;
+    const names = [m.home.name, m.away.name, m.home.shortName, m.away.shortName, m.home.abbreviation, m.away.abbreviation];
+    return names.some((n: string) => n && n.length > 2 && q.includes(String(n).toLowerCase()));
+  });
+  return found ?? null;
+}
+
+/**
+ * Confident deterministic intents. Returns null when the question needs the
+ * LLM (free-form). Cross-match questions are checked BEFORE selected-match
+ * intents so "who scored in the Liverpool match" routes to Liverpool even
+ * though "scored" also matches the generic goals intent.
+ */
+async function tryRulesIntent(question: string): Promise<AskAnswer | null> {
   const q = question.toLowerCase();
   const { payload, matches } = getLiveState();
   const askedAt = new Date().toISOString();
@@ -89,16 +108,40 @@ export function answerFromRules(question: string): AskAnswer {
 
   const has = (...keys: string[]) => keys.some((k) => q.includes(k));
 
-  // Fixture-level questions work even without a selected match
-  if (has("fixture", "fixtures", "today", "matches", "who plays", "schedule", "games today")) {
-    return { ...base, answer: `Today's Premier League slate: ${fixturesLine()}`, matchId: match?.id ?? null };
-  }
   if (has("hello", "hi ", "hey", "help", "what can you")) {
     return {
       ...base,
       answer:
-        "Ask me anything about the live Premier League feed - the score, goals and scorers, cards, substitutions, possession and shots, the running clock, today's fixtures, or why the tactical state changed.",
+        "Ask me anything about the live Premier League feed - the score, goals and scorers, cards, substitutions, possession and shots, the running clock, today's fixtures, or why the tactical state changed. You can also ask about any other match from today's slate by name.",
       matchId: match?.id ?? null,
+    };
+  }
+
+  if (has("fixture", "fixtures", "today", "who plays", "schedule", "games today", "matches today")) {
+    return { ...base, answer: `Today's Premier League slate: ${fixturesLine()}`, matchId: match?.id ?? null };
+  }
+
+  // Cross-match questions: mention another fixture by name -> answer from
+  // that fixture's real timeline (fetched on demand, cached by the engine).
+  const otherMatch = findMentionedMatch(question, match?.id);
+  if (otherMatch) {
+    const outcome =
+      otherMatch.home.score === otherMatch.away.score
+        ? "It finished level."
+        : `${(otherMatch.home.score > otherMatch.away.score ? otherMatch.home : otherMatch.away).name} won.`;
+    let detail = "";
+    const fetched = await fetchMatchEvents(otherMatch.id);
+    if (fetched) {
+      const goals = goalsLine(fetched.events, fetched.match.home, fetched.match.away);
+      const cards = cardsLine(fetched.events, fetched.match.home, fetched.match.away);
+      detail = ` Goals: ${goals}. ${cards}`;
+    }
+    return {
+      ...base,
+      answer:
+        `${otherMatch.home.name} ${otherMatch.home.score}-${otherMatch.away.score} ${otherMatch.away.name} (${otherMatch.status.detail}). ${outcome}${detail}` +
+        (match && match.id !== otherMatch.id ? ` The studio is currently showing ${match.home.shortName} vs ${match.away.shortName} - switch with the Premier League dropdown to load this one fully.` : ""),
+      matchId: otherMatch.id,
     };
   }
 
@@ -113,6 +156,9 @@ export function answerFromRules(question: string): AskAnswer {
   const statusText = match.status.state === "in" ? `live at ${fmtClock(match.clockDisplay || match.status.detail)}` : match.status.detail;
   const stats = match.stats;
 
+  if (has("goal", "scored", "scorer", "goals")) {
+    return { ...base, answer: goalsLine(timeline, home, away), matchId: match.id };
+  }
   if (has("score", "result", "who winning", "who is winning", "who's winning", "leading")) {
     const leader =
       home.score === away.score
@@ -126,9 +172,6 @@ export function answerFromRules(question: string): AskAnswer {
       matchId: match.id,
     };
   }
-  if (has("goal", "scored", "scorer", "goals")) {
-    return { ...base, answer: goalsLine(timeline, home, away), matchId: match.id };
-  }
   if (has("card", "booking", "yellow", "red", "sent off")) {
     return { ...base, answer: cardsLine(timeline, home, away), matchId: match.id };
   }
@@ -136,7 +179,9 @@ export function answerFromRules(question: string): AskAnswer {
     return { ...base, answer: subsLine(timeline, home, away), matchId: match.id };
   }
   if (has("possession", "ball")) {
-    const p = stats ? `Possession is ${stats.home.possession}% ${home.shortName} vs ${stats.away.possession}% ${away.shortName}${match.statsSource === "provider" ? " (provider statistics)." : " (derived from the timeline)."}` : "Possession statistics aren't available for this match yet.";
+    const p = stats
+      ? `Possession is ${stats.home.possession}% ${home.shortName} vs ${stats.away.possession}% ${away.shortName}${match.statsSource === "provider" ? " (provider statistics)." : " (derived from the timeline)."}`
+      : "Possession statistics aren't available for this match yet.";
     return { ...base, answer: p, matchId: match.id };
   }
   if (has("shot", "on target", "chance")) {
@@ -183,34 +228,30 @@ export function answerFromRules(question: string): AskAnswer {
     return { ...base, answer: snap ? `${snap.insight?.title}. ${snap.insight?.analyst ?? ""}` : "No insight generated yet.", matchId: match.id };
   }
 
-  // Questions about another fixture from today's slate
-  const otherMatch = matches.find((m: any) => {
-    if (m.id === match.id) return false;
-    const names = [m.home.name, m.away.name, m.home.shortName, m.away.shortName, m.home.abbreviation, m.away.abbreviation];
-    return names.some((n: string) => n && n.length > 2 && q.includes(String(n).toLowerCase()));
-  });
-  if (otherMatch) {
-    const outcome =
-      otherMatch.home.score === otherMatch.away.score
-        ? "It finished level."
-        : `${otherMatch.home.score > otherMatch.away.score ? otherMatch.home.name : otherMatch.away.name} won.`;
+  // No confident intent - hand the question to the LLM.
+  return null;
+}
+
+/** Deterministic fallback (used when the LLM is unavailable). */
+export function answerFromRules(question: string): AskAnswer {
+  const { payload, matches } = getLiveState();
+  const askedAt = new Date().toISOString();
+  const base = { question, askedAt, source: "rules" as const };
+  const match = payload?.match ?? null;
+  const home = match?.home;
+  const away = match?.away;
+  const timeline: any[] = (payload?.events ?? []) as any[];
+
+  if (match && home && away) {
+    const goals = goalsLine(timeline, home, away);
+    const cards = cardsLine(timeline, home, away);
     return {
       ...base,
-      answer:
-        `${otherMatch.home.name} ${otherMatch.home.score}-${otherMatch.away.score} ${otherMatch.away.name} (${otherMatch.status.detail}). ${outcome} ` +
-        `Event-level detail is available for the match selected in the studio - pick it in the Premier League dropdown to load its full timeline.`,
-      matchId: otherMatch.id,
+      answer: `${match.home.name} ${match.home.score}-${match.away.score} ${match.away.name} (${match.status.detail}). Goals: ${goals}. ${cards} Possession: ${match.stats ? `${match.stats.home.possession}% - ${match.stats.away.possession}%` : "unavailable"}.`,
+      matchId: match.id,
     };
   }
-
-  return {
-    ...base,
-    answer:
-      `I can answer from the live feed: score, goals and scorers, cards, substitutions, possession, shots and team stats, ` +
-      `the clock, today's fixtures, and the current tactical state. For this match (${home.shortName} vs ${away.shortName}) ` +
-      `try one of those - or configure an OpenAI key for free-form questions.`,
-    matchId: match.id,
-  };
+  return { ...base, answer: `I couldn't reach the inference endpoint for that free-form question. ${fixturesLine()}`, matchId: null };
 }
 
 /** Optional LLM answer with the live payload injected as grounding context. */
@@ -254,7 +295,7 @@ async function answerFromOpenAI(question: string): Promise<string | null> {
         // reasoning tokens from the same limit; the prompt caps the visible answer.
         max_tokens: 2000,
       }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!response.ok) return null;
     const data = await response.json();
@@ -271,10 +312,15 @@ export async function askMatchMind(question: string): Promise<AskAnswer> {
   if (!trimmed) {
     return { question, answer: "Ask me something about the live Premier League feed.", source: "rules", matchId: null, askedAt: new Date().toISOString() };
   }
+  // Confident intents answer instantly from the live data (no LLM wait).
+  const rules = await tryRulesIntent(trimmed);
+  if (rules) return rules;
+  // Free-form questions go to the configured inference endpoint.
   const llm = await answerFromOpenAI(trimmed);
   if (llm) {
     const { payload } = getLiveState();
     return { question: trimmed, answer: llm, source: "openai", matchId: payload?.match?.id ?? null, askedAt: new Date().toISOString() };
   }
+  // Inference unavailable - deterministic fallback keeps the chat useful.
   return answerFromRules(trimmed);
 }
