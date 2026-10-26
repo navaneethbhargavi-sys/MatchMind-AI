@@ -14,7 +14,7 @@ Submission checklist:
 
 1. **Public GitHub repo** — this folder is a ready-to-push git repository (see "Publish to GitHub" below).
 2. **Project pitch** — see [PITCH.md](PITCH.md) (what we built, Microsoft/Azure technologies, problem solved, rubric mapping).
-3. **Demo video (< 2 minutes)** — a ready-to-upload walkthrough recording is included as `demo-video.webm` (recorded from the running app). Upload it to YouTube (public or unlisted) and paste the URL on the hackathon project page. No copyrighted music or third-party trademarks in the recording.
+3. **Demo video (< 2 minutes)** — a ready-to-upload walkthrough recording is included as `demo-video.mp4` (recorded from the running app). Upload it to YouTube (public or unlisted) and paste the URL on the hackathon project page. No copyrighted music or third-party trademarks in the recording.
 4. **AI answers** — Ask MatchMind works out of the box with the grounded rules engine. To enable LLM-powered free-form answers with **Microsoft's stack**, set a free **GitHub Models** token in `matchmind/.env.local`:
    ```
    OPENAI_BASE_URL=https://models.github.ai/inference
