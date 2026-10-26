@@ -65,8 +65,6 @@ export type LiveFeedPayload = {
 };
 
 export type LiveFeedState = {
-  enabled: boolean;
-  setEnabled: (value: boolean) => void;
   connected: boolean;
   provider: string | null;
   providerError: string | null;
@@ -77,20 +75,15 @@ export type LiveFeedState = {
 };
 
 export function useLiveFeed(): LiveFeedState {
-  // Synthetic-first (hackathon requirement): the football-realistic demo
-  // engine is the primary data source. The optional public-feed connector
-  // starts disabled and can be toggled from the control strip.
-  const [enabled, setEnabled] = useState(false);
+  // Live-only: the app is permanently connected to the real feed.
   const [connected, setConnected] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
   const [providerError, setProviderError] = useState<string | null>(null);
   const [matches, setMatches] = useState<LiveMatchListItem[]>([]);
   const [payload, setPayload] = useState<LiveFeedPayload | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const enabledRef = useRef(enabled);
   const selectedRef = useRef(selectedMatchId);
 
-  useEffect(() => { enabledRef.current = enabled; }, [enabled]);
   useEffect(() => { selectedRef.current = selectedMatchId; }, [selectedMatchId]);
 
   useEffect(() => {
@@ -115,11 +108,6 @@ export function useLiveFeed(): LiveFeedState {
   }, []);
 
   useEffect(() => {
-    if (!enabled) {
-      setConnected(false);
-      setPayload(null);
-      return;
-    }
     let cancelled = false;
     let es: EventSource | null = null;
     try {
@@ -140,13 +128,12 @@ export function useLiveFeed(): LiveFeedState {
       setConnected(false);
     }
     return () => { cancelled = true; es?.close(); };
-  }, [enabled]);
+  }, []);
 
   // Safety net: if the SSE connection stalls (e.g. the tab was backgrounded
   // and the browser throttled the reconnect), refresh via REST and adopt any
   // payload newer than what the stream last delivered.
   useEffect(() => {
-    if (!enabled) return;
     const timer = window.setInterval(async () => {
       try {
         const response = await fetch("/api/live/state");
@@ -166,7 +153,7 @@ export function useLiveFeed(): LiveFeedState {
       }
     }, 30_000);
     return () => window.clearInterval(timer);
-  }, [enabled]);
+  }, []);
 
   const selectMatch = useCallback((matchId: string) => {
     setSelectedMatchId(matchId);
@@ -177,7 +164,7 @@ export function useLiveFeed(): LiveFeedState {
     }).catch(() => undefined);
   }, []);
 
-  return { enabled, setEnabled, connected, provider, providerError, matches, payload, selectedMatchId, selectMatch };
+  return { connected, provider, providerError, matches, payload, selectedMatchId, selectMatch };
 }
 
 export function describeLiveMatch(match: LiveMatchListItem): string {

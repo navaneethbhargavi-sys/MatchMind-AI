@@ -3,13 +3,11 @@ import type { Language } from "./data";
 import { t, LANGUAGES } from "./i18n";
 import type { LiveMatchInfo } from "./live";
 
-export function SettingsDrawer({ open, onClose, language, onLanguageChange, liveEnabled, onLiveEnabledChange, liveConnected, provider, match }: {
+export function SettingsDrawer({ open, onClose, language, onLanguageChange, liveConnected, provider, match }: {
   open: boolean;
   onClose: () => void;
   language: Language;
   onLanguageChange: (language: Language) => void;
-  liveEnabled: boolean;
-  onLiveEnabledChange: (value: boolean) => void;
   liveConnected: boolean;
   provider: string | null;
   match: LiveMatchInfo | null;
@@ -46,9 +44,7 @@ export function SettingsDrawer({ open, onClose, language, onLanguageChange, live
               <strong>{t(language, "liveFeedToggle")}</strong>
               <small>{liveConnected ? t(language, "streamOn") : t(language, "streamOff")}</small>
             </div>
-            <button className={`toggle-switch ${liveEnabled ? "on" : ""}`} onClick={() => onLiveEnabledChange(!liveEnabled)} role="switch" aria-checked={liveEnabled} aria-label="Toggle live feed">
-              <span />
-            </button>
+            <span className="engine-badge"><span /> ON</span>
           </div>
           <div className="drawer-kv">
             <span>{t(language, "providerLabel")}</span>

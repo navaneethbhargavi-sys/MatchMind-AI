@@ -1,10 +1,7 @@
 /**
- * Live match engine: polls a real football data provider, converts real
+ * Live match engine: polls the real football data provider, converts real
  * Premier League matches into the studio's event + snapshot contract, and
- * broadcasts updates to SSE subscribers.
- *
- * When no provider data is available the studio continues to run on the
- * synthetic replay engine, so the demo never goes dark.
+ * broadcasts updates to SSE subscribers. This is the app's single data path.
  */
 
 import { insightLibrary, type Insight, type MatchEvent, type Snapshot, type TacticalState } from "@workspace/matchmind";

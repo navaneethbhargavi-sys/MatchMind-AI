@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { generateMatchEvents } from "@/lib/events";
 import { computeMatchState, computePlayerStats, computeTeamStats, detectKeyMoments } from "@/lib/stats";
 import { generateInsights, explainMoment } from "@/lib/insights";
 import { Event, MatchState, ViewerPrefs, Insight, PlayerStats } from "@/lib/types";
@@ -15,12 +14,7 @@ import {
 } from "@/lib/live";
 import { Send, Settings, Eye, BarChart3, MessageSquare, Zap, User, Radio } from "lucide-react";
 
-const ALL_EVENTS = generateMatchEvents(120);
-
 export default function MatchPage() {
-  const [eventIndex, setEventIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
   const [prefs, setPrefs] = useState<ViewerPrefs>({ mode: "fan", language: "en" });
   const [showSettings, setShowSettings] = useState(false);
   const [narrative, setNarrative] = useState("");
@@ -32,9 +26,6 @@ export default function MatchPage() {
   const [selectedLiveId, setSelectedLiveId] = useState<string | null>(null);
   const [liveDetail, setLiveDetail] = useState<LiveMatchDetailJson | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
-  const [liveMode, setLiveMode] = useState(true);
-
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load the real fixture list and auto-select the most interesting match
   useEffect(() => {
@@ -64,7 +55,7 @@ export default function MatchPage() {
 
   // Poll the selected real match every 15 seconds while live mode is on
   useEffect(() => {
-    if (!liveMode || !selectedLiveId) return;
+    if (!selectedLiveId) return;
     let cancelled = false;
     const load = async () => {
       try {
@@ -80,13 +71,13 @@ export default function MatchPage() {
     void load();
     const timer = setInterval(load, 15_000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, [liveMode, selectedLiveId]);
+  }, [selectedLiveId]);
 
   const liveEvents: Event[] = liveDetail ? liveEventsToAppEvents(liveDetail) : [];
-  const liveState: MatchState | null = liveDetail && liveMode ? liveMatchState(liveDetail, liveEvents) : null;
-  const liveActive = Boolean(liveMode && liveState && liveDetail?.status.state === "in");
+  const liveState: MatchState | null = liveDetail ? liveMatchState(liveDetail, liveEvents) : null;
+  const liveActive = Boolean(liveState && liveDetail?.status.state === "in");
 
-  const visibleEvents = liveActive ? liveEvents : ALL_EVENTS.slice(0, eventIndex);
+  const visibleEvents = liveEvents;
   const state: MatchState = liveActive
     ? liveState!
     : computeMatchState(visibleEvents, "Manchester City", "Liverpool");
@@ -140,35 +131,6 @@ export default function MatchPage() {
     }
   }, [liveActive, fetchNarrative]);
 
-  useEffect(() => {
-    if (!liveActive && playing) {
-      intervalRef.current = setInterval(() => {
-        setEventIndex((prev) => {
-          if (prev >= ALL_EVENTS.length) {
-            setPlaying(false);
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 800 / speed);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [playing, speed, liveActive]);
-
-  useEffect(() => {
-    if (!liveActive && eventIndex > 0 && eventIndex % 5 === 0) {
-      fetchNarrative();
-    }
-  }, [eventIndex, fetchNarrative, liveActive]);
-
-  const reset = () => {
-    setEventIndex(0);
-    setPlaying(false);
-    setNarrative("");
-  };
-
   const lastEvent = visibleEvents[visibleEvents.length - 1];
   const rawDetail = liveDetail?.status.detail ?? "";
   const statusLabel = liveDetail
@@ -193,12 +155,9 @@ export default function MatchPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setLiveMode(!liveMode)}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition ${liveMode ? "bg-emerald-600 hover:bg-emerald-500" : "bg-slate-700 hover:bg-slate-600"}`}
-          >
-            {liveMode ? "Live feed: ON" : "Live feed: OFF (demo replay)"}
-          </button>
+          <span className="px-3 py-1.5 rounded text-xs font-medium bg-emerald-600/20 border border-emerald-500/40 text-emerald-400">
+            Live feed: ON
+          </span>
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="p-1.5 rounded hover:bg-slate-700 transition"
@@ -210,7 +169,7 @@ export default function MatchPage() {
       </header>
 
       {/* Real match picker */}
-      {liveMode && (
+      {(
         <div className="flex items-center justify-center gap-3 py-2 bg-slate-900/70 border-b border-slate-700 flex-wrap px-4">
           <label className="text-xs text-slate-400 flex items-center gap-2">
             <Radio className="size-3.5 text-emerald-400" /> Real Premier League match:
@@ -256,31 +215,7 @@ export default function MatchPage() {
         </div>
       </div>
 
-      {/* Controls (demo replay only; live mode refreshes automatically) */}
-      {!liveActive && (
-        <div className="flex items-center justify-center gap-3 py-2 bg-slate-800/50">
-          <button
-            onClick={() => setPlaying(!playing)}
-            className="px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-sm font-medium transition"
-          >
-            {playing ? "Pause" : "Play"}
-          </button>
-          <button onClick={reset} className="px-4 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-sm transition">
-            Reset
-          </button>
-          <select
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
-            className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs"
-          >
-            <option value={1}>1x</option>
-            <option value={2}>2x</option>
-            <option value={4}>4x</option>
-          </select>
-          <span className="text-xs text-slate-400">{visibleEvents.length} events · demo replay</span>
-        </div>
-      )}
-      {liveActive && (
+      {(
         <div className="flex items-center justify-center gap-3 py-2 bg-slate-800/50">
           <span className="flex items-center gap-1.5 text-xs text-emerald-400"><span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Auto-refreshing every 15s from the live feed</span>
           <button onClick={() => void fetchNarrative()} className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs transition">Refresh narrative</button>
@@ -342,7 +277,7 @@ export default function MatchPage() {
           <div className="space-y-1">
             {visibleEvents.length === 0 && (
               <div className="text-xs text-slate-500 p-2">
-                {liveActive ? "Waiting for the first real match event…" : "Press play to start the match..."}
+                "Waiting for the first real match event…"
               </div>
             )}
             {visibleEvents.slice(-30).reverse().map((e) => (
@@ -355,7 +290,6 @@ export default function MatchPage() {
                 {typeof e.metadata?.text === "string" && liveActive && (
                   <div className="text-slate-500 mt-0.5">{e.metadata.text}</div>
                 )}
-                {e.type === "shot" && !liveActive && <span className="text-slate-500 ml-1">({e.metadata.speed} km/h, xG: {e.metadata.xG})</span>}
               </div>
             ))}
           </div>
@@ -401,7 +335,7 @@ export default function MatchPage() {
           {loadingNarrative ? (
             <div className="text-sm text-slate-400 animate-pulse">Generating narrative...</div>
           ) : (
-            <div className="text-sm text-slate-200 leading-relaxed mb-4">{narrative || (liveActive ? "Awaiting the first narrative from the live feed…" : "Press play to start the match...")}</div>
+            <div className="text-sm text-slate-200 leading-relaxed mb-4">{narrative || "Awaiting the first narrative from the live feed…"}</div>
           )}
 
           <h2 className="text-sm font-semibold mb-2 mt-4 flex items-center gap-2">

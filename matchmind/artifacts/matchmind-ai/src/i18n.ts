@@ -8,6 +8,7 @@ const EN: Strings = {
   // Live studio
   live: "LIVE", noLive: "No Premier League matches are live right now — explore recent results below.",
   noFixtures: "No Premier League fixtures in today's provider window.",
+  connecting: "Connecting to the live Premier League feed — pick any fixture below to explore its full timeline.",
   matchCentre: "LIVE MATCH CENTRE", streamConnected: "Stream connected", streamOffline: "Local synthetic replay",
   home: "HOME", away: "AWAY", venue: "VENUE", dataSource: "DATA SOURCE",
   inPlay: "In play", upcoming: "Upcoming", fullTime: "Full-time",
@@ -48,6 +49,7 @@ const EN: Strings = {
 const ES: Strings = {
   live: "EN VIVO", noLive: "No hay partidos de Premier League en vivo en este momento — explora los resultados recientes abajo.",
   noFixtures: "No hay partidos de Premier League en la ventana de hoy.",
+  connecting: "Conectando al feed en vivo de la Premier League — elige cualquier partido para explorar su cronología.",
   matchCentre: "CENTRO DE PARTIDOS", streamConnected: "Transmisión conectada", streamOffline: "Repetición sintética local",
   home: "LOCAL", away: "VISITANTE", venue: "ESTADIO", dataSource: "FUENTE DE DATOS",
   inPlay: "En juego", upcoming: "Próximo", fullTime: "Final del partido",
@@ -83,6 +85,7 @@ const ES: Strings = {
 const FR: Strings = {
   live: "EN DIRECT", noLive: "Aucun match de Premier League en direct pour le moment — explorez les résultats récents ci-dessous.",
   noFixtures: "Aucun match de Premier League dans la fenêtre du jour.",
+  connecting: "Connexion au flux en direct de Premier League — choisissez un match pour explorer sa chronologie.",
   matchCentre: "CENTRE DE MATCH", streamConnected: "Flux connecté", streamOffline: "Relecture synthétique locale",
   home: "DOMICILE", away: "EXTÉRIEUR", venue: "STADE", dataSource: "SOURCE DES DONNÉES",
   inPlay: "En jeu", upcoming: "À venir", fullTime: "Fin du match",
@@ -118,6 +121,7 @@ const FR: Strings = {
 const HI: Strings = {
   live: "लाइव", noLive: "इस समय कोई प्रीमियर लीग मैच लाइव नहीं है — नीचे हाल के परिणाम देखें।",
   noFixtures: "आज की विंडो में कोई प्रीमियर लीग मैच नहीं है।",
+  connecting: "प्रीमियर लीग लाइव फीड से जुड़ रहे हैं — पूरी टाइमलाइन देखने के लिए कोई भी मैच चुनें।",
   matchCentre: "लाइव मैच केंद्र", streamConnected: "स्ट्रीम जुड़ी है", streamOffline: "लोकल सिंथेटिक रीप्ले",
   home: "होम", away: "अवे", venue: "स्टेडियम", dataSource: "डेटा स्रोत",
   inPlay: "खेल जारी", upcoming: "आगामी", fullTime: "मैच समाप्त",

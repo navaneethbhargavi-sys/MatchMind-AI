@@ -2,19 +2,19 @@
 
 This is your Football MatchMind app suite upgraded to run on **real Premier League live match data** — real fixtures, real scores, real goals/cards/substitutions, real team statistics — instead of the fictional "Northbridge vs Riverside" simulation.
 
-Both apps still keep the original synthetic replay as a fallback/demo mode, so nothing breaks when no matches are on.
+The app is live-only: it connects to the real Premier League feed and says so plainly when no match is in play, while letting you browse recent results with full timelines.
 
 ---
 
 ## Hackathon submission (Inside the Game)
 
-> **Data compliance:** this project runs on **synthetic, football-realistic data** (Northbridge FC vs Riverside United, three replay scenarios). The synthetic engine is the default experience on every boot. The optional public-feed connector ships **disabled by default** and is not part of the submission demo.
+This project is a **live Premier League match intelligence platform**: it connects to the public live feed and turns real fixtures, events and statistics into explainable narratives, recaps, decision support and conversational Q&A. When no match is in play, the app says so and lets you browse the most recent results with their full timelines.
 
 Submission checklist:
 
 1. **Public GitHub repo** — this folder is a ready-to-push git repository (see "Publish to GitHub" below).
 2. **Project pitch** — see [PITCH.md](PITCH.md) (what we built, Microsoft/Azure technologies, problem solved, rubric mapping).
-3. **Demo video (< 2 minutes)** — a ready-to-upload walkthrough recording is included as `demo-video.mp4` (recorded from the running app). Upload it to YouTube (public or unlisted) and paste the URL on the hackathon project page. No copyrighted music or third-party trademarks in the recording.
+3. **Demo video (< 2 minutes)** — `demo-video.mp4` is a ready-to-upload walkthrough of the live experience. Upload it to YouTube (public or unlisted) and paste the URL on the hackathon project page.
 4. **AI answers** — Ask MatchMind works out of the box with the grounded rules engine. To enable LLM-powered free-form answers with **Microsoft's stack**, set a free **GitHub Models** token in `matchmind/.env.local`:
    ```
    OPENAI_BASE_URL=https://models.github.ai/inference
@@ -73,7 +73,7 @@ npm run dev
 # open http://localhost:3005
 ```
 
-On match days the studio auto-selects the **live** Premier League match (falls back to the next kickoff, then the latest result). Use the **Premier League** dropdown to switch matches. The **Live feed on / Demo replay** button toggles between real data and the original synthetic demo.
+The studio auto-selects the **live** Premier League match (falls back to the next kickoff, then the latest result). Use the **Premier League** dropdown to switch matches at any time — every fixture keeps its full timeline, statistics, recap and clips.
 
 ---
 
@@ -84,7 +84,7 @@ On match days the studio auto-selects the **live** Premier League match (falls b
 | Teams, crests, score, clock, status, goals, cards, substitutions | **Real** (live provider) |
 | Possession, pass completion, shots, corners, fouls (when provider stats exist) | **Real** |
 | Pressure index, tempo, territory, tactical state | **Derived** from real events (labelled "derived" in the UI) |
-| Ball/shot speed, player speeds | Not in the free feed — only shown in demo replay mode |
+| Ball/shot speed, player speeds | Not available in the public feed — not shown |
 
 football-intel shows the same real events/stats and its play-by-play commentary list is the provider's real commentary.
 
@@ -125,10 +125,10 @@ Save the file and restart the event engine. Without any key, the grounded rules 
 - `GET  /api/live/stream` — Server-Sent Events stream of the selected real match
 - `GET  /api/live/state` — current live payload snapshot
 
-All original synthetic endpoints (`/api/matches/match-001/...`, `/api/replay/...`) still work.
+All endpoints serve live data; the legacy synthetic replay routes have been removed.
 
 ## Notes
 
 - The two zip files you provided (`Football-MatchMind-App-Suite.zip`, `football-app.zip`) were byte-identical — one app suite, wired up here once.
 - Free-feed limits: ESPN is generous; football-data.org free tier allows 10 requests/minute (this app polls well under that).
-- If no Premier League matches are scheduled today, the studio falls back to the last played fixture or the synthetic demo.
+- If no Premier League matches are in play, the studio shows a clear banner and lets you browse the most recent results.
