@@ -1,0 +1,16 @@
+# MatchMind Studio (React 19 + Vite build, served by `vite preview` with /api proxy)
+FROM node:24-alpine AS build
+WORKDIR /app
+RUN corepack enable
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY lib ./lib
+COPY artifacts ./artifacts
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @workspace/matchmind... run build \
+  && pnpm --filter @workspace/matchmind-ai run build
+
+FROM node:24-alpine
+WORKDIR /app
+COPY --from=build /app /app
+EXPOSE 5173
+CMD ["pnpm", "--filter", "@workspace/matchmind-ai", "run", "serve"]

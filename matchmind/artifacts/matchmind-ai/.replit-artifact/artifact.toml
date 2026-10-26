@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "MatchMind AI"
+description = "A synthetic football intelligence studio that explains live match shifts, lets analysts compare tactical decisions with evidence, and generates broadcast-ready recaps and overlays."
+version = "1.0.0"
+id = "artifacts/matchmind-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22641
+
+[services.development]
+run = "pnpm --filter @workspace/matchmind-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/matchmind-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/matchmind-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22641"
+BASE_PATH = "/"

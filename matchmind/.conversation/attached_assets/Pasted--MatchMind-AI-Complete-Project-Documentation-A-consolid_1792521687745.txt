@@ -1,0 +1,459 @@
+# MatchMind AI — Complete Project Documentation
+
+> A consolidated copy of the project overview, product and UX design, architecture, synthetic data contract, API, operations, Azure rollout guide, and hackathon roadmap.
+
+## Contents
+
+1. [Project overview](#project-overview)
+2. [Product and UX design](#product-and-ux-design)
+3. [Architecture](#architecture)
+4. [Synthetic data contract](#synthetic-data-contract)
+5. [Local HTTP and streaming API](#local-http-and-streaming-api)
+6. [Operations and deployment](#operations-and-deployment)
+7. [Azure rollout guide](#azure-rollout-guide)
+8. [Hackathon roadmap](#hackathon-roadmap)
+
+---
+
+## Project overview
+
+MatchMind AI is a synthetic football intelligence engine for a Premier League studio. It turns football-realistic events into tactical states, explainable narratives, multilingual fan copy, recaps, and broadcast-style overlay previews.
+
+### Current local demo
+
+- Live synthetic event ingestion over Server-Sent Events (SSE).
+- Replayable scenarios: Pressure pulse, Rhythm control, and Open match.
+- Derived possession, passing, pressure, tempo, and territory metrics.
+- Tactical states: Control, Pressure, Chaos, and Swing.
+- Evidence trails linked to source events.
+- Analyst and Fan narrative modes; English, Spanish, French, and Hindi output.
+- Insight library, recap timeline, lower-third/tactical/player-focus overlay previews, and machine-readable graphics payloads.
+- Performance Lab with player thresholds, pass quality, speed metrics, simulated auto-eventing confidence, and synthetic dataset export.
+- Cloud Pipeline view showing the Azure-oriented architecture.
+
+### Quick start
+
+Requirements: Node.js and npm.
+
+```bash
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:4173/`. The development script runs the React/Vite experience and local synthetic event engine together; the engine listens on port `8787`.
+
+For a production build and run:
+
+```bash
+npm run build
+npm start
+```
+
+With Docker available:
+
+```bash
+docker compose up --build
+```
+
+The production Node server serves the built app and API/SSE stream on port `8787`. The container runs as the unprivileged Node user and checks `/api/health`.
+
+On Windows, Docker Desktop's WSL 2 engine may require Virtual Machine Platform and WSL. If the feature is disabled, run in Administrator PowerShell:
+
+```powershell
+Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+```
+
+Save work and restart Windows to apply the feature. Docker is optional for local app development.
+
+### Azure-oriented pipeline
+
+| Stage | Current proof | Azure direction |
+| --- | --- | --- |
+| Ingest | Synthetic SSE event engine | Azure Event Hubs |
+| Interpret | TypeScript replay metrics and tactical states | Azure Functions and Microsoft Fabric |
+| Explain | Evidence-backed deterministic insight library | Microsoft Foundry and Azure AI Services |
+| Persist | In-memory replay state | Azure Cosmos DB |
+| Ground | Structured evidence rows | Azure AI Search |
+| Render | Overlay Lab and JSON payload preview | Azure Container Apps and broadcast integrations |
+| Personalize | Analyst/Fan modes, player focus, four languages | Azure AI Services and preference storage |
+
+These Azure services are architecture targets, not active integrations just because the UI lists them or configuration is present. The app remains synthetic-only unless real adapters are implemented and connected.
+
+### Suggested judging demo
+
+1. Start in Live Studio and show the event stream.
+2. Change replay scenarios and compare tactical stories.
+3. Select evidence and trace it to source events.
+4. Show insight confidence and explainability.
+5. Compare Analyst, Fan, and translated recap output.
+6. Preview a tactical overlay payload.
+7. Explain the intended Azure path and clearly distinguish it from working local components.
+
+---
+
+## Product and UX design
+
+### Product intent and audiences
+
+MatchMind surfaces what is changing in a match, why it matters, and how to present it. The score is context, not the whole story. The interface is a studio control room: calm and legible during live play, with evidence close at hand and clear labeling of local functionality versus future cloud services.
+
+- **Studio analyst:** trends, metrics, confidence, time windows, and evidence.
+- **Casual fan:** a short, plain-language explanation of a turning point.
+- **Producer / graphics operator:** concise, timed, machine-readable copy and an overlay preview.
+- **Player-focused viewer:** events and performance signals centered on a selected player.
+
+### Information architecture
+
+1. **Live Studio** — score/clock, replay controls, event feed, pitch interpretation, current insight, metrics, and player focus.
+2. **Insight Library** — selectable tactical stories, confidence, and evidence trails.
+3. **Match Recaps** — recap presentation with audience and language controls.
+4. **Overlay Lab** — lower-third, tactical-state, and player-focus previews with a JSON payload.
+5. **Cloud Pipeline** — five-stage workflow and Azure service status.
+6. **Performance Lab** — player thresholds, pass quality, speed indicators, auto-eventing confidence, and dataset export.
+
+### Main user journeys
+
+**Explain a live change:** open Live Studio → watch events and tactical state → select an evidence row → inspect matching source events → switch Analyst/Fan wording.
+
+**Compare match stories:** choose Pressure pulse, Rhythm control, or Open match → reset/replay → compare metrics and state. Scenarios are deterministic synthetic demonstrations, not historical or live Premier League data.
+
+**Prepare a broadcast graphic:** open Overlay Lab → choose overlay type → inspect copy and structured payload → preview the on-air state. No production graphics vendor is currently connected.
+
+**Tailor a recap:** open Match Recaps → choose mode and language → review the narrative and moments → copy recap text. Preferences are currently in-memory UI state.
+
+### Visual system
+
+- Canvas: deep navy (`#07111d`) with a subtle glow and restrained grid texture.
+- Surfaces: layered blue-black panels and thin translucent borders; spacing establishes hierarchy.
+- Accent semantics: mint for live/positive/connected, coral for pressure or opponent signals, blue for supporting information, yellow for caution/special events. Pair color with text or an icon.
+- Typography: Manrope for interface and narrative; DM Mono for timestamps, IDs, and technical labels.
+- Motion: restrained pulses and transitions; add reduced-motion support during accessibility hardening.
+- Density: dashboard cards can be information-rich, but headlines and explanations should remain readable at studio viewing distance.
+
+### Interaction, content, accessibility
+
+- Label the stream and exports as synthetic.
+- Separate event data, derived metrics, and narrative interpretation.
+- Show confidence and evidence close to each narrative; confidence is not certainty.
+- Keep Analyst and Fan copy distinct in length and vocabulary.
+- Preserve names, teams, event IDs, and evidence references in translations.
+- Never imply an AI model, video recognition, Azure resource, or broadcast system is active unless it is connected.
+- Keep pause/resume and replay reset visible; reset should reset cursor and scenario state.
+- Target desktop studio workstations first, with a graceful tablet layout. At narrow widths, stack regions without hiding state or controls. Provide visible keyboard focus, accessible names, semantic headings, and non-color status cues.
+
+### Current product boundaries
+
+One synthetic match, three replay scenarios, four tactical states, four languages (EN/ES/FR/HI), and deterministic local narrative templates. Authentication, saved profiles, real video analysis, real match data, live model-generated narratives, and external overlay rendering are not implemented.
+
+---
+
+## Architecture
+
+### Current implementation
+
+```text
+Synthetic scenario generator (src/data.ts)
+                │ derives events, attributes, snapshots and tactical states
+                ▼
+Node HTTP service (server.ts, port 8787)
+       ├── JSON match/replay/capabilities/health API
+       ├── Server-Sent Events replay stream
+       └── serves dist/ in production
+                │
+         Vite proxy during development
+                ▼
+React + TypeScript UI (src/App.tsx)
+       ├── Live Studio
+       ├── Insights / Recaps / Overlay Lab
+       └── Cloud Pipeline / Performance Lab
+```
+
+Development runs Vite and Node together. Production serves the built UI and API from one process/container. Replay state and SSE subscribers are held in memory and reset when the service restarts.
+
+### Five pipeline stages
+
+| Stage | Local proof | Intended cloud adapter |
+| --- | --- | --- |
+| Ingest | Synthetic events streamed by SSE | Azure Event Hubs |
+| Interpret | TypeScript snapshot calculations and scenario states | Azure Functions and Microsoft Fabric |
+| Explain | Deterministic narrative templates with evidence | Microsoft Foundry / Azure AI |
+| Render | React overlays and structured payload preview | Container Apps API plus a graphics-partner adapter |
+| Personalize | Analyst/Fan, selected player, and language controls | Profile/preferences storage and Azure AI Services |
+
+### Runtime components
+
+- `src/data.ts`: contracts, synthetic events, players, scenarios, insight templates, and snapshot calculations.
+- `src/platform.ts`: pipeline/service descriptions and status labels.
+- `server.ts`: HTTP routing, replay cursor and event window, periodic replay advancement, SSE fan-out, health/readiness, and static assets.
+- `runtime-config.ts`: host, port, runtime label, and environment-variable presence checks; does not return secrets.
+- `src/App.tsx`: navigation, stream subscription, browser fallback ticker, workspaces, personalization controls, and exports.
+- `src/styles.css`: visual design and responsive component styling.
+
+### Event and narrative flow
+
+1. Cursor and scenario determine the next synthetic event.
+2. Service updates the bounded recent-event list and derives the snapshot.
+3. Service sends a current payload to connected SSE clients.
+4. React updates feed, metrics, pitch state, player focus, and narrative.
+5. Selecting evidence emphasizes matching source events.
+6. Recap and overlay views reuse the same snapshot/insight and vary presentation by mode/language.
+
+### Reliability and cloud evolution
+
+The current engine is single-process/in-memory and is suitable for a demo, not multi-replica production. Replicas would have independent cursors and event histories. A cloud version should use shared event storage/state, idempotent consumers, timestamps and schema versions, reconnect/replay semantics, and backpressure/retention policies.
+
+```text
+Event Hubs → event consumer → windowed interpretation → grounded narrative service
+                                  ├── Fabric analytics       └── Foundry/Azure AI
+                                  └── Cosmos DB state/preferences
+                                         ↓
+                         Container Apps API/SSE → overlay partner
+```
+
+Keep UI contracts stable behind adapters. Prefer managed identity, secret storage, and explicit synthetic-only mode. Add cloud services only when their adapters are implemented and observable.
+
+---
+
+## Synthetic data contract
+
+### Data policy
+
+All generated events are fictional and synthetic. Do not replace them with redistributed real Premier League data. Keep provenance labels and synthetic-only flags in exports and deployments.
+
+### Match event
+
+The `MatchEvent` TypeScript type is in `src/data.ts`.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | Event identifier within replay. |
+| `minute`, `second` | number | Match-clock location. |
+| `team` | `northbridge` \| `riverside` | Synthetic team identifier. |
+| `player` | string | Synthetic player display name. |
+| `playerId` | string, optional | Synthetic player identifier. |
+| `type` | pressure, pass, shot, tackle, turnover | Event category. |
+| `label` | string | Human-readable event label. |
+| `zone` | defensive-third, middle-third, final-third | Coarse pitch region. |
+| `outcome` | string | Event result/context. |
+| `highlight` | boolean, optional | Whether the demo emphasizes this event. |
+| `distanceM` | number, optional | Pass distance. |
+| `speedKph` | number, optional | Player speed signal. |
+| `ballSpeedKph` | number, optional | Ball speed signal. |
+| `shotSpeedKph` | number, optional | Shot speed. |
+| `passAccuracy` | number, optional | Synthetic pass accuracy signal. |
+| `passQuality` | number, optional | Synthetic 0–100 pass-quality signal. |
+| `passDifficulty` | number, optional | Synthetic difficulty rating. |
+| `modelConfidence` | number, optional | Simulated event-model confidence percentage. |
+| `thresholdTriggered` | string, optional | Threshold/milestone label. |
+
+Non-applicable fields are omitted. Numeric values are generated for demonstration and are not calibrated scouting measurements.
+
+### Snapshot, state, and insight
+
+`Snapshot` includes match clock; possession and pass-completion pairs; pressure, tempo, and territory; ball/shot speed; pass distance/quality; player speed and distance; simulated auto-event confidence; milestone; tactical state; and corresponding `Insight`.
+
+- `CONTROL`: settled rhythm/possession pattern.
+- `PRESSURE`: concentrated pressure and forced actions.
+- `CHAOS`: high-variance exchanges and frequent transitions.
+- `SWING`: short-window momentum/territory shift.
+
+These are deterministic scenario outputs, not trained-model predictions. An `Insight` includes state, title, Analyst/Fan copy, Spanish/French/Hindi strings, confidence, and evidence rows. Current evidence rows use display labels/values/tones; production should add evidence IDs, source event IDs, time window, calculation version, structured values, and units.
+
+Current scenarios: `pressure-pulse`, `rhythm-control`, `open-match`. Synthetic teams: Northbridge FC and Riverside United. Player IDs/names are fictional and defined in `src/data.ts`.
+
+### Dataset export and evolution
+
+Client JSON export includes `source: "synthetic-football-realistic"`, match ID, scenario, generation time, recent events, snapshot, and schema field list. The server dataset endpoint returns source, match ID, scenario, events, snapshot, and schema; it does not currently include client-only `generatedAt`.
+
+For external producers or persistence, add `schemaVersion`, UTC `eventTime`, match/producer IDs, provenance, and optional pitch coordinates with documented orientation. Validate units, enum values, timestamps, and synthetic source. Prefer additive event evolution.
+
+---
+
+## Local HTTP and streaming API
+
+The Node service defaults to `127.0.0.1:8787`; Vite proxies `/api` during development. All match data is synthetic. JSON endpoints use `application/json; charset=utf-8` and `Cache-Control: no-store` unless stated otherwise.
+
+### `GET /api/health`
+
+Liveness response, for example:
+
+```json
+{ "ok": true, "service": "matchmind-event-engine", "mode": "synthetic", "runtime": "local", "syntheticOnly": true }
+```
+
+### `GET /api/ready`
+
+Returns `{ ready, service, integrations }`. Integration status reflects configuration visibility, not a live dependency health check.
+
+### `GET /api/matches/match-001`
+
+Returns `{ cursor, scenario, event, events, snapshot }`. The event list is a rolling window of up to nine events; snapshot follows the contract above.
+
+### `GET /api/matches/match-001/dataset`
+
+Returns the current synthetic event window and snapshot with source, match ID, scenario, and schema field list.
+
+### `GET /api/replay/scenarios`
+
+Returns scenario IDs/labels/descriptions and the selected scenario.
+
+### `GET /api/platform/capabilities`
+
+Returns mode, stream type, five pipeline stages, service map, integration configuration states, and contract version `0.3`. It describes intended architecture and does not activate adapters.
+
+### `GET /api/matches/match-001/events/stream`
+
+SSE endpoint. Immediately sends the current payload as `data: <JSON>\n\n`, then emits updates every 1.8 seconds. There are no named event types or event IDs yet; the browser `EventSource` default reconnect behavior is used.
+
+### `POST /api/replay/reset?scenario=<id>`
+
+Resets cursor and event window; if scenario is supported, selects it. Broadcasts reset payload to connected SSE clients and returns it as JSON. Unsupported scenario currently leaves selection unchanged rather than returning validation error.
+
+Non-`/api/` paths serve `dist/` with SPA fallback. Unknown `/api/` paths return `404` and `{ "error": "Not found" }`.
+
+### API limitations
+
+State is shared only within one Node process and is not persisted. Replay advances server-side every 1.8 seconds even if a browser is paused; pause currently suppresses client rendering. There is no authentication or per-user authorization. Keep on a trusted local/demo network. Production should add schema versioning, event IDs/replay cursors, validation, rate limits, and explicit error responses.
+
+---
+
+## Operations and deployment
+
+### Local development and production
+
+```bash
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:4173/`. For production:
+
+```bash
+npm run build
+npm start
+```
+
+The Node server serves `dist/` and API on port `8787`. Configure `HOST` and `PORT`; `HOST=0.0.0.0` is appropriate in a container, while local development defaults to loopback.
+
+### Docker and Windows prerequisite
+
+The project includes `Dockerfile`, `compose.yaml`, and `.dockerignore` for a single-container demo. Run `docker compose up --build`; health probe is `/api/health`. Docker is optional for local development.
+
+On Windows with Docker Desktop WSL 2, Virtual Machine Platform and WSL may require Administrator setup and a Windows restart. See the PowerShell command in Project overview / README section above.
+
+### Environment configuration
+
+Copy `.env.example` only when configuring your own environment. Never commit populated secrets. Supported variables:
+
+- `HOST`, `PORT`, `MATCHMIND_RUNTIME`
+- Event Hubs: `AZURE_EVENT_HUBS_CONNECTION_STRING`, `AZURE_EVENT_HUB_NAME`
+- Foundry/Azure OpenAI: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, and `AZURE_OPENAI_API_KEY` or `AZURE_CLIENT_ID`
+- Cosmos DB: `AZURE_COSMOS_ENDPOINT`, `AZURE_COSMOS_KEY` or managed identity client ID
+- Fabric: `FABRIC_WORKSPACE_ID`
+
+The app currently detects configuration presence only; it does not connect to those services. Keep runtime `local` and values empty unless adapters are implemented.
+
+### Health, security, and operational boundaries
+
+- `/api/health` checks the Node process responds; it does not test Azure dependencies.
+- `/api/ready` reports configuration presence; it does not prove dependency connectivity.
+- If UI reports local fallback, check that port `8787` and the stream endpoint are reachable.
+- Replay state is in memory and resets on process restart.
+- Do not use real match or personally identifying data in the demo; do not expose the unauthenticated service publicly.
+- For real adapters, use managed identity or a secret store, least privilege, TLS, and dependency health checks.
+
+### Azure deployment notes
+
+`infra/azure/main.bicep` describes an Azure Container Apps deployment. Review region, public exposure, replicas, logging cost, image access, and secrets before deploying. Current template expects a public GHCR image. The app stays synthetic-only unless cloud adapters are implemented and enabled.
+
+---
+
+## Azure rollout guide
+
+The local engine intentionally runs without a cloud account or credentials. Azure mapping:
+
+| Need | Azure service | Adapter responsibility |
+| --- | --- | --- |
+| Synthetic live events | Azure Event Hubs | Consume events and preserve current contract. |
+| Stateful aggregation | Azure Functions | Create time-window metrics, tactical states, and threshold triggers. |
+| Tactical analytics | Microsoft Fabric | Store event history and calculate real-time/post-match views. |
+| Narrative agent | Microsoft Foundry / Azure OpenAI | Produce audience/language copy grounded in evidence IDs. |
+| Translation | Azure AI Services | Expand language coverage without losing evidence links. |
+| Match/preferences | Azure Cosmos DB | Persist replay snapshots, preferences, and recap artifacts. |
+| Studio context retrieval | Azure AI Search | Retrieve approved editorial/player context. |
+| API and UI hosting | Azure Container Apps | Run the container with health checks and runtime settings. |
+
+### Container rollout sequence
+
+1. Build the image with the included `Dockerfile`.
+2. Push to a registry available to the Azure Container Apps environment.
+3. Create one Container App, expose port `8787`, and probe `/api/health`.
+4. Add non-secret runtime settings such as `MATCHMIND_RUNTIME=azure`.
+5. Supply Event Hubs, Foundry/Azure OpenAI, Cosmos DB, and Fabric settings through secrets/configuration or managed identity.
+6. Enable each adapter only after credentials and least-privilege access are verified.
+
+The Bicep template provisions a Container Apps environment, Log Analytics workspace, and one externally reachable app revision. It defaults runtime to `local`. Example after publishing a public GHCR image and reviewing expected charges:
+
+```bash
+az login
+az account set --subscription <subscription-id>
+az group create --name rg-matchmind-demo --location eastus
+az deployment group create --resource-group rg-matchmind-demo --template-file infra/azure/main.bicep --parameters appName=matchmind-demo containerImage=ghcr.io/<owner>/<repository>:latest
+```
+
+The template keeps one replica warm and creates a Log Analytics workspace; charges may continue. After the demo, delete only the dedicated resource group if it contains nothing you need:
+
+```bash
+az group delete --name rg-matchmind-demo --yes --no-wait
+```
+
+Keep `MATCHMIND_RUNTIME=local` and Azure values empty for a demo unless resources are genuinely connected. Provisioning or configuring Azure does not itself implement adapters.
+
+### Suggested adapter order
+
+1. Event Hubs consumer preserving the SSE payload shape.
+2. Foundry narrative adapter returning structured headline, narrative, confidence, and evidence IDs.
+3. Cosmos DB replay state and audience preferences.
+4. Fabric export for post-match analytics and evaluation.
+
+---
+
+## Hackathon roadmap
+
+### Shipped in the current local demo
+
+- Synthetic SSE ingestion/replay with browser fallback; three scenarios and derived snapshots.
+- Four tactical states, Analyst/Fan copy, evidence rows, and four languages.
+- Six workspaces: Live Studio, Insight Library, Match Recaps, Overlay Lab, Cloud Pipeline, Performance Lab.
+- Player selection, performance thresholds, pass/speed signals, simulated auto-eventing confidence.
+- Synthetic dataset export, machine-readable overlay preview, Node production server/container, CI/container workflows, Azure Container Apps Bicep starting point.
+
+### Next: harden the vertical slice
+
+1. Add API/event schema validation and versioned contracts.
+2. Make pause/reset semantics server-authoritative; add stable SSE event IDs and reconnect/replay behavior.
+3. Test metric derivation, scenario transitions, API responses, and evidence-to-event linkage.
+4. Replace display-only evidence strings with structured values, units, windows, and source event IDs.
+5. Validate translations, accessibility, keyboard navigation, and narrow-screen layouts.
+6. Label metrics as measured, derived, or illustrative so simulated values cannot be mistaken for tracking data.
+
+### Then: implement cloud adapters one at a time
+
+1. **Event Hubs:** consume synthetic events while preserving the local event contract.
+2. **Interpretation:** calculate windowed metrics with formula/version metadata and export history to Fabric.
+3. **Narrative:** call Foundry/Azure AI with structured evidence; validate schema/evidence IDs, calibrate confidence, and retain deterministic fallback.
+4. **Persistence/personalization:** store match snapshots and opted-in language/team/player preferences in Cosmos DB.
+5. **Broadcast:** formalize overlay schema, timestamps, expiry, safe areas, and idempotency; integrate a graphics partner only when an endpoint is available.
+6. **Video auto-eventing:** build/evaluate separately; current confidence/threshold values are synthetic signals, not a video model.
+
+### Submission demo checklist
+
+- Start from a clean install using the commands above.
+- Keep all data synthetic and say so in UI/demo narration.
+- Show a scenario change producing a different state, metrics, and narrative.
+- Select evidence and trace it to source events.
+- Compare Analyst/Fan and at least one translation.
+- Preview overlay payload without claiming a real broadcast connection.
+- Export the dataset and identify simulated fields.
+- Clearly state which Azure integrations are actually active versus planned.
+- Run `npm run build` and check health/API/SSE before submitting.

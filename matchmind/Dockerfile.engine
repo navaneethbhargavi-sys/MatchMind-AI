@@ -1,0 +1,17 @@
+# MatchMind event engine (Express + SSE)
+FROM node:24-alpine AS build
+WORKDIR /app
+RUN corepack enable
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY lib ./lib
+COPY artifacts/api-server ./artifacts/api-server
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @workspace/matchmind... run build \
+  && pnpm --filter @workspace/api-server run build
+
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app /app
+EXPOSE 5000
+CMD ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
