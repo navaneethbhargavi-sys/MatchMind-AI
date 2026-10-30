@@ -14,7 +14,8 @@ export type EventType =
   | "substitution"
   | "kickoff"
   | "halftime"
-  | "fulltime";
+  | "fulltime"
+  | "other";
 
 export type MatchEvent = {
   id: string;

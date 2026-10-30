@@ -298,7 +298,9 @@ async function answerFromOpenAI(question: string): Promise<string | null> {
       signal: AbortSignal.timeout(25_000),
     });
     if (!response.ok) return null;
-    const data = await response.json();
+    const data = (await response.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
     const text = data?.choices?.[0]?.message?.content?.trim();
     return text && text.length > 0 ? text : null;
   } catch (error) {
